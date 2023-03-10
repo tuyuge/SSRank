@@ -96,17 +96,17 @@ def compute_metrics(keys_list, predictions_list, matching):
     return precision, recall, f1
 
 
-def compute_all_metrics(datasets, variables, num, match_method, data_dir, save=True):
+def compute_all_metrics(datasets, variables, num, match_method, data_dir, save_result=True):
     metrics_dict = {}
     mapping = {'partial_matching':partial_matching, 'exact_matching':exact_matching}
     for variable in variables:
-        if save:
+        if save_result:
             method = import_method(variable)
         for dataset in datasets:
             dataset_dir = f"{data_dir}/{dataset}"
             keys_list = keys_loader(dataset_dir, "keys", num)
-            if save:
-                new_dir = f"{dataset_dir}/{match_method}/{variable}"
+            if save_result:
+                new_dir = f"{dataset_dir}/{variable}"
                 if not os.path.exists(new_dir):
                     os.makedirs(new_dir)
                 new_save = partial(save, dataset_dir=dataset_dir, method=method, method_name=variable)
@@ -116,8 +116,8 @@ def compute_all_metrics(datasets, variables, num, match_method, data_dir, save=T
                 for j in range(num):
                     with open(f"{new_dir}/{data_loader(j, dataset_dir)['file']}.key", "w", encoding="utf-8") as f:
                         f.write(results[j])
-                print(f"{match_method} Results saved for {dataset} with {variable}!")
-            dir_name = f"{match_method}/{variable}"
+                print(f"Results saved for {dataset} with {variable}!")
+            dir_name = f"{variable}"
             predictions_list = keys_loader(dataset_dir, dir_name, num)
             metrics = compute_metrics(keys_list, predictions_list, matching=mapping[match_method])
             print(f"The {match_method} precision, recall and f1 score for {dataset} with {variable} is {metrics}")
@@ -128,12 +128,14 @@ def compute_all_metrics(datasets, variables, num, match_method, data_dir, save=T
 
 # Testing cases
 if __name__ == '__main__':
-    datasets = ['Inspec', 'SemEval2017', 'KDD', 'WWW', 'JML']
-    variables = ['yake', 'keybert', 'textrank']
-    num = 2
-    match_method = 'exact_matching'
+    # datasets = ['Inspec', 'SemEval2017', 'KDD', 'WWW', 'JML']
+    # variables = ['yake', 'keybert', 'textrank']
+    datasets = ['Inspec', 'SemEval2017']
+    variables = ['yake']
+    num = 400
+    match_method = 'partial_matching'
     data_dir = f"D:/tyg_research/code 2.0/SSRank/data"
-    metrics_dict = compute_all_metrics(datasets, variables, num, match_method, data_dir, save=True)
+    metrics_dict = compute_all_metrics(datasets, variables, num, match_method, data_dir, save_result=True)
     import pandas as pd
     df = pd.DataFrame(metrics_dict)
     df.to_csv(f"{match_method}_comparison_metrics.csv")
