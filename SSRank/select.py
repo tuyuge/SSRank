@@ -1,4 +1,4 @@
-from SSRank.clustering import HAC_clustering
+from SSRank.clustering import HAC_clustering,K_means
 from SSRank.rank import compute_score
 from collections import OrderedDict
 
@@ -11,7 +11,7 @@ def common_words(phrase_list):
     return len(common_words)
 
 
-def get_keywords(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.85, clustering=HAC_clustering, n=2):
+def get_keywords(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.9, clustering=HAC_clustering, n=2):
     sorted_candidates_scores = compute_score(data, upper_alpha=upper_alpha, title_alpha=title_alpha, window_size=window_size, damping=damping)
     candidate_phrases = list(sorted_candidates_scores.keys())
     sorted_candidates_clusters = clustering(candidate_phrases, n=n)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     from SSRank.utils import data_loader
 
     data = data_loader(18, r'D:\tyg_research\code 2.0\SSRank\data\JML')
-    ssrank = get_keywords(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.85, clustering=HAC_clustering, n=2)
+    ssrank = get_keywords(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.9, clustering=HAC_clustering, n=2)
 
     for keyword in ssrank["keywords"]:
         print(keyword)

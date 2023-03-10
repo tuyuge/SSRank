@@ -8,7 +8,7 @@ punctuations = string.punctuation
 from SSRank.utils import get_noun_chunks
 
 
-def compute_score(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.85):
+def compute_score(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.9):
     text = data["text"]
     candidate_phrases = get_noun_chunks(text)
 
