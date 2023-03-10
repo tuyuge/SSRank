@@ -1,23 +1,37 @@
-from SSRank.utils import data_loader, get_noun_chunks
-from SSRank.select import get_keywords
-from SSRank.clustering import HAC_clustering,K_means
+from SSRank.utils import data_loader
 import os
 import multiprocessing
 from functools import partial
 import re
 from nltk.stem import PorterStemmer
-
 ps = PorterStemmer()
 import copy
 
+def import_method(method_name):
+    if method_name=="yake":
+        import yake
+        kw_extractor = yake.KeywordExtractor()
+        method = kw_extractor.extract_keywords
+    if method_name=="keybert":
+        from keybert import KeyBERT
+        kw_model = KeyBERT()
+        method = partial(kw_model.extract_keywords, keyphrase_ngram_range=(1,3))
+    if method_name=="textrank":
+        from SSRank.rank import compute_score
+        method = compute_score
+    return method
 
-def save(i, dataset_dir, variable, value):
+
+def save(i, dataset_dir, method, method_name):
     data = data_loader(i, dataset_dir)
     try:
-        kwargs = {variable: value}
-        predictions = get_keywords(data, **kwargs)["keywords"].keys()
+        if method_name in ['yake', 'keybert']:
+            predictions = [i[0] for i in method(data["text"])]
+        else:
+            total = method(data)
+            predictions = list(total.keys())[:15]
     except:
-        predictions = get_noun_chunks(data["text"])
+        predictions = []
     return '\n'.join(predictions)
 
 
@@ -82,33 +96,32 @@ def compute_metrics(keys_list, predictions_list, matching):
     return precision, recall, f1
 
 
-def compute_all_metrics(datasets, variables, num, match_method, data_dir, save_result=True):
+def compute_all_metrics(datasets, variables, num, match_method, data_dir, save=True):
     metrics_dict = {}
     mapping = {'partial_matching':partial_matching, 'exact_matching':exact_matching}
-    for dataset in datasets:
-        dataset_dir = f"{data_dir}/{dataset}"
-        keys_list = keys_loader(dataset_dir, "keys", num)
-        for variable in variables:
-            values = variables[variable]
-            for value in values:
-                if save_result:
-                    new_dir = f"{dataset_dir}/{match_method}/{variable}={value}"
-                    if not os.path.exists(new_dir):
-                        os.makedirs(new_dir)
-                    new_save = partial(save, dataset_dir=dataset_dir, variable=variable, value=value)
-                    pool = multiprocessing.Pool()
-                    results = pool.map(new_save, range(num))
-                    pool.close()
-                    for j in range(num):
-                        with open(f"{new_dir}/{data_loader(j, dataset_dir)['file']}.key", "w", encoding="utf-8") as f:
-                            f.write(results[j])
-                    print(f"{match_method} Results saved for {dataset} with {variable}={value}!")
-
-                dir_name = f"{match_method}/{variable}={value}"
-                predictions_list = keys_loader(dataset_dir, dir_name, num)
-                metrics = compute_metrics(keys_list, predictions_list, matching=mapping[match_method])
-                print(f"The {match_method} precision, recall and f1 score for {dataset} with {variable}={value} is {metrics}")
-                metrics_dict[(dataset, variable, value)] = metrics
+    for variable in variables:
+        if save:
+            method = import_method(variable)
+        for dataset in datasets:
+            dataset_dir = f"{data_dir}/{dataset}"
+            keys_list = keys_loader(dataset_dir, "keys", num)
+            if save:
+                new_dir = f"{dataset_dir}/{match_method}/{variable}"
+                if not os.path.exists(new_dir):
+                    os.makedirs(new_dir)
+                new_save = partial(save, dataset_dir=dataset_dir, method=method, method_name=variable)
+                pool = multiprocessing.Pool()
+                results = pool.map(new_save, range(num))
+                pool.close()
+                for j in range(num):
+                    with open(f"{new_dir}/{data_loader(j, dataset_dir)['file']}.key", "w", encoding="utf-8") as f:
+                        f.write(results[j])
+                print(f"{match_method} Results saved for {dataset} with {variable}!")
+            dir_name = f"{match_method}/{variable}"
+            predictions_list = keys_loader(dataset_dir, dir_name, num)
+            metrics = compute_metrics(keys_list, predictions_list, matching=mapping[match_method])
+            print(f"The {match_method} precision, recall and f1 score for {dataset} with {variable} is {metrics}")
+            metrics_dict[(dataset, variable)] = metrics
     return metrics_dict
 
 
@@ -116,15 +129,13 @@ def compute_all_metrics(datasets, variables, num, match_method, data_dir, save_r
 # Testing cases
 if __name__ == '__main__':
     datasets = ['Inspec', 'SemEval2017', 'KDD', 'WWW', 'JML']
-    variables = {'window_size': [2, 3, 4, 5, 6, 7, 8, 9, 10],
-                 'damping': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9],
-                 'clustering': [HAC_clustering, K_means]}
-    num = 200
+    variables = ['yake', 'keybert', 'textrank']
+    num = 2
     match_method = 'exact_matching'
     data_dir = f"D:/tyg_research/code 2.0/SSRank/data"
-    metrics_dict = compute_all_metrics(datasets, variables, num, match_method, data_dir)
+    metrics_dict = compute_all_metrics(datasets, variables, num, match_method, data_dir, save=True)
     import pandas as pd
     df = pd.DataFrame(metrics_dict)
-    df.to_csv("all_metrics.csv")
+    df.to_csv(f"{match_method}_comparison_metrics.csv")
 
 
