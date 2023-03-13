@@ -86,35 +86,24 @@ def compute_all_metrics(datasets, variables, num, match_method, data_dir, save_r
     metrics_dict = {}
     mapping = {'partial_matching': partial_matching, 'exact_matching': exact_matching, "HAC_clustering": HAC_clustering,
                "K_means": K_means}
+    all_keys = []
     for dataset in datasets:
         dataset_dir = f"{data_dir}/{dataset}"
         keys_list = keys_loader(dataset_dir, "keys", num)
-        for variable in variables:
-            values = variables[variable]
-            for value in values:
-                if save_result:
-                    new_dir = f"{dataset_dir}/{variable}/{value}"
-                    if not os.path.exists(new_dir):
-                        os.makedirs(new_dir)
-                    if variable == "clustering":
-                        new_value = mapping[value]
-                        new_save = partial(save, dataset_dir=dataset_dir, variable=variable, value=new_value)
-                    else:
-                        new_save = partial(save, dataset_dir=dataset_dir, variable=variable, value=value)
-                    pool = multiprocessing.Pool()
-                    results = pool.map(new_save, range(num))
-                    pool.close()
-                    for j in range(num):
-                        with open(f"{new_dir}/{data_loader(j, dataset_dir)['file']}.key", "w", encoding="utf-8") as f:
-                            f.write(results[j])
-                    print(f"Results saved for {dataset} with {variable}={value}!")
-
-                dir_name = f"{variable}/{value}"
+        all_keys.extend(keys_list)
+    for variable in variables:
+        values = variables[variable]
+        for value in values:
+            dir_name = f"{variable}/{value}"
+            all_predictions = []
+            for dataset in datasets:
+                dataset_dir = f"{data_dir}/{dataset}"
                 predictions_list = keys_loader(dataset_dir, dir_name, num)
-                metrics = compute_metrics(keys_list, predictions_list, matching=mapping[match_method])
-                print(
-                    f"The {match_method} precision, recall and f1 score for {dataset} with {variable}={value} is {metrics}")
-                metrics_dict[(dataset, variable, value)] = metrics
+                all_predictions.extend(predictions_list)
+            metrics = compute_metrics(all_keys, all_predictions, matching=mapping[match_method])
+            print(
+                f"The {match_method} precision, recall and f1 score with {variable}={value} is {metrics}")
+            metrics_dict[(variable, value)] = metrics
     return metrics_dict
 
 
@@ -127,10 +116,10 @@ if __name__ == '__main__':
         # 'clustering': ["HAC_clustering", "K_means"]
     }
     num = 400
-    match_method = 'partial_matching'
+    match_method = 'exact_matching'
     data_dir = r"D:\tyg_thesis\SSRank-main\data"
     metrics_dict = compute_all_metrics(datasets, variables, num, match_method, data_dir, save_result=False)
     import pandas as pd
 
     df = pd.DataFrame(metrics_dict)
-    df.to_csv(f"{match_method}_clustering_metrics.csv")
+    df.to_csv(f"{match_method}_total_metrics.csv")

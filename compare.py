@@ -17,10 +17,12 @@ def import_method(method_name):
         kw_model = KeyBERT()
         method = partial(kw_model.extract_keywords, keyphrase_ngram_range=(1,3))
     if method_name=="textrank":
-        from SSRank.rank import compute_score
-        method = compute_score
+        import pytextrank
+        import spacy
+        nlp = spacy.load("en_core_web_sm")
+        nlp.add_pipe("textrank")
+        method = nlp
     return method
-
 
 def save(i, dataset_dir, method, method_name):
     data = data_loader(i, dataset_dir)
@@ -28,8 +30,8 @@ def save(i, dataset_dir, method, method_name):
         if method_name in ['yake', 'keybert']:
             predictions = [i[0] for i in method(data["text"])]
         else:
-            total = method(data)
-            predictions = list(total.keys())[:15]
+            doc = method(data["text"])
+            predictions = [phrase.text for phrase in doc._.phrases]
     except:
         predictions = []
     return '\n'.join(predictions)
@@ -74,8 +76,12 @@ def keys_loader(dataset_dir, dir_name, num):
     keys_list = []
     filename_list = os.listdir(os.path.join(dataset_dir, 'docsutf8'))
     for i in range(num):
-        with open(os.path.join(dataset_dir, dir_name, filename_list[i][:-4] + '.key'), encoding="utf-8") as f:
-            keys = f.read().split("\n")
+        try:
+            with open(os.path.join(dataset_dir, dir_name, filename_list[i][:-4] + '.key'), encoding="utf-8") as f:
+                keys = f.read().split("\n")
+        except:
+            with open(os.path.join(dataset_dir, dir_name, filename_list[i][:-4] + '.txt'), encoding="utf-8") as f:
+                keys = f.read().split("\n")
         keys_list.append(stemmed(keys))
     return keys_list
 
@@ -118,6 +124,8 @@ def compute_all_metrics(datasets, variables, num, match_method, data_dir, save_r
                         f.write(results[j])
                 print(f"Results saved for {dataset} with {variable}!")
             dir_name = f"{variable}"
+            if variable=="SSRank":
+                dir_name="clustering/HAC_clustering"
             predictions_list = keys_loader(dataset_dir, dir_name, num)
             metrics = compute_metrics(keys_list, predictions_list, matching=mapping[match_method])
             print(f"The {match_method} precision, recall and f1 score for {dataset} with {variable} is {metrics}")
@@ -130,12 +138,12 @@ def compute_all_metrics(datasets, variables, num, match_method, data_dir, save_r
 if __name__ == '__main__':
     # datasets = ['Inspec', 'SemEval2017', 'KDD', 'WWW', 'JML']
     # variables = ['yake', 'keybert', 'textrank']
-    datasets = ['Inspec', 'SemEval2017']
-    variables = ['yake']
+    datasets = ['Inspec', 'SemEval2017', 'KDD', 'WWW', 'JML']
+    variables = ['SSRank', 'yake', 'keybert', 'textrank']
     num = 400
-    match_method = 'partial_matching'
-    data_dir = f"D:/tyg_research/code 2.0/SSRank/data"
-    metrics_dict = compute_all_metrics(datasets, variables, num, match_method, data_dir, save_result=True)
+    match_method = 'exact_matching'
+    data_dir = r"D:\tyg_thesis\SSRank-main\data"
+    metrics_dict = compute_all_metrics(datasets, variables, num, match_method, data_dir, save_result=False)
     import pandas as pd
     df = pd.DataFrame(metrics_dict)
     df.to_csv(f"{match_method}_comparison_metrics.csv")
