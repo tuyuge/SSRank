@@ -48,15 +48,22 @@ def get_keywords(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.9,
 
 if __name__ == '__main__':
     from SSRank.utils import data_loader
+    import os
 
-    data = data_loader(18, r'D:\tyg_research\code 2.0\SSRank\data\JML')
-    ssrank = get_keywords(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.9, clustering=HAC_clustering, n=2)
-
-    for keyword in ssrank["keywords"]:
-        print(keyword)
-    print(ssrank["candidates"])
-    print(ssrank["rank"])
-    print(ssrank["clusters"])
-    print(ssrank["keywords"])
-    print(data["present"])
-    print(data["text"])
+    dataset = "Inspec"
+    dataset_dir =  f'D:/tyg_thesis/SSRank-main/data/{dataset}'
+    dir_name = "clustering/K_means"
+    for i in range(10):
+        data = data_loader(i,dataset_dir)
+        file = data["file"]
+    # data = {'title': 'Token frequency as a determinant of morphological change',
+    #         'text': 'This paper demonstrates that morphological change tends to involve the replacement of low frequency forms in inflectional paradigms by innovative forms based on high frequency forms, using Greek data involving the diachronic reorganisation of verbal inflection classes. A computational procedure is outlined for generating a possibility space of morphological changes which can be represented as analogical proportions, on the basis of synchronic paradigms in ancient Greek. I then show how supplementing analogical proportions with token frequency information can help to predict whether a hypothetical change actually took place in the language’s subsequent development. Because of the crucial role of inflected surface forms serving as analogical bases in this model, I argue that the results support theories in which inflected forms can be stored whole in the lexicon.'}
+        ssrank = get_keywords(data, upper_alpha=3, title_alpha=2, window_size=3, damping=0.9, clustering=K_means, n=2)
+        try:
+            keys = ssrank["keywords"]
+        except:
+            print(f"Wrong file: {file}")
+        with open(os.path.join(dataset_dir, dir_name, file + '.key'), "w", encoding="utf-8") as f:
+            f.write("\n".join(keys))
+        print(f"Saved for the {i}th doc")
+    # print(data["file"])

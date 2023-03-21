@@ -12,7 +12,7 @@ def data_loader(index, dataset_dir):
 
     with open(os.path.join(dataset_dir, 'docsutf8', filename_list[index]), encoding="utf-8") as f:
         text = f.read().replace("\n", " ").replace("\t", "")
-        text = re.sub(r' \(.*\)', '', text)
+        text = re.sub(r'[\(\)]', '', text)
         title = text.split('.', maxsplit=1)[0]
 
     with open(os.path.join(dataset_dir, 'keys', filename_list[index][:-4] + '.key'), encoding="utf-8") as f:

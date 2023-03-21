@@ -2,8 +2,12 @@ import numpy as np
 from numpy.linalg import norm
 from sklearn.cluster import AgglomerativeClustering
 from collections import OrderedDict
-
 from sklearn.cluster import KMeans
+# import gensim.downloader as api
+# model = api.load("glove-wiki-gigaword-300")
+# model.save('fstwk.d2v')
+from gensim.models import KeyedVectors
+km_model = KeyedVectors.load("fstwk.d2v")
 
 def editDistDP(str1, str2):
     m = len(str1)
@@ -71,7 +75,10 @@ def phrase_embed(p, model):
             word_embed_list.append(model[i])
         except:
             continue
-    return np.mean(word_embed_list, axis=0)
+    if word_embed_list:
+        return np.mean(word_embed_list, axis=0)
+    else:
+        return np.zeros(300)
 
 def K_means(candidate_phrases, n=2):
     '''
@@ -80,17 +87,15 @@ def K_means(candidate_phrases, n=2):
     :param n: n_clusters=int(size/n)
     :return:
     '''
-    import gensim.downloader as api
-    model = api.load("glove-wiki-gigaword-300")
+
     size = len(candidate_phrases)
     kmeans = KMeans(n_clusters=int(size/n))
 
     labels = []
     tokens = []
     for phrase in candidate_phrases:
-        tokens.append(phrase_embed(phrase, model))
+        tokens.append(phrase_embed(phrase, km_model))
         labels.append(phrase)
-
 
     kmeans.fit(tokens)
     y_kmeans = kmeans.predict(tokens)
@@ -115,7 +120,8 @@ def K_means(candidate_phrases, n=2):
 if __name__ == '__main__':
     from SSRank.utils import data_loader
     from SSRank.rank import compute_score
-    data = data_loader(5, r'D:\tyg_research\code 2.0\SSRank\data\Inspec')
+    data = data_loader(1, r'D:\tyg_research\code 2.0\SSRank\data\Inspec')
+
     sorted_candidates_scores = compute_score(data)
     candidate_phrases = list(sorted_candidates_scores.keys())
     print(K_means(candidate_phrases))
